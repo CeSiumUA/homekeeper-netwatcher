@@ -20,7 +20,7 @@ def process_device_state(res: bool, ip_addr: str, name: str):
             "counter": 0
         }
 
-    if device_states[ip_addr] != res:
+    if device_states[ip_addr]["state"] != res:
         if device_states[ip_addr]["counter"] > 3:
             notify_connection_changed(ip_addr, res, name)
             device_states[ip_addr]["state"] = res
