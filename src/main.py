@@ -18,7 +18,7 @@ def process_device_state(res: bool, ip_addr: str, name: str):
     device_states[ip_addr] = res
 
 def ping_devices():
-    with open("clients.list") as fd:
+    with open("clients.list", "r") as fd:
         for device_str in fd:
             device = device_str.split("=")
             device_name = device[0]
