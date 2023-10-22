@@ -14,9 +14,21 @@ def notify_connection_changed(ip_addr: str, state: bool, name: str):
     MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {name} ({ip_addr}) {state_str}!")
 
 def process_device_state(res: bool, ip_addr: str, name: str):
+    if ip_addr not in device_states:
+        device_states[ip_addr] = {
+            "state": res,
+            "counter": 0
+        }
+
     if device_states[ip_addr] != res:
-        notify_connection_changed(ip_addr, res, name)
-    device_states[ip_addr] = res
+        if device_states[ip_addr]["counter"] > 3:
+            notify_connection_changed(ip_addr, res, name)
+            device_states[ip_addr]["state"] = res
+            device_states[ip_addr]["counter"] = 0
+            logging.info("device state counter resetted")
+        else:
+            logging.info("device state counter incremented")
+            device_states[ip_addr]["counter"] += 1
 
 def ping_devices():
     with open("clients.list", "r") as fd:
@@ -25,8 +37,6 @@ def ping_devices():
             device_name = device[0]
             ip_addr = device[1]
             logging.info(f"processing {device_name}")
-            if ip_addr not in device_states:
-                device_states[ip_addr] = False
             response = system("ping -c 1 " + ip_addr)
             process_device_state(response == 0, ip_addr, device_name)
 
