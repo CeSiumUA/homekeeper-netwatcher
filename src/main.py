@@ -1,11 +1,16 @@
 import logging
 from os import environ, system
 from apscheduler.schedulers.blocking import BlockingScheduler
+from paho.mqtt import client as mqtt_client
+import topics
+import random
 
 device_states = {}
+MQTT_CLIENT_INSTANCE = None
 
 def notify_connection_changed(ip_addr: str, state: bool, name: str):
-    pass
+    logging.info("notify device connected/disconnected")
+    MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {ip_addr} status: {state}")
 
 def process_device_state(res: bool, ip_addr: str, name: str):
     if device_states[ip_addr] != res:
@@ -21,7 +26,14 @@ def ping_devices():
             response = system("ping -c 1 " + ip_addr)
             process_device_state(response == 0, ip_addr, device_name)
 
+def on_mqtt_connect(client, userdata, flags, rc):
+    if rc == 0:
+        logging.info("Connected to MQTT")
+    else:
+        logging.fatal("Failed to connect to MQTT, return code: %d\n", rc)
+
 def start_mqtt():
+    global MQTT_CLIENT_INSTANCE
     broker_host = environ.get("MQTT_HOST")
     if broker_host is None:
         logging.fatal("broker host is empty")
@@ -31,7 +43,14 @@ def start_mqtt():
     else:
         broker_port = int(broker_port)
 
-def main():
+    client_id = "netwatcher-{}".format(random.randint(0, 1000))
+
+    MQTT_CLIENT_INSTANCE = mqtt_client.Client(client_id=client_id)
+    MQTT_CLIENT_INSTANCE.on_connect = on_mqtt_connect
+    MQTT_CLIENT_INSTANCE.connect(broker_host, broker_port)
+    MQTT_CLIENT_INSTANCE.loop_start()
+
+def start_scheduler():
     ping_interval = environ.get("PING_INTERVAL")
 
     if ping_interval is None:
@@ -48,6 +67,10 @@ def main():
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
         pass
+
+def main():
+    start_mqtt()
+    start_scheduler()
 
 if __name__ == '__main__':
 
