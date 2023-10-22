@@ -23,6 +23,8 @@ def ping_devices():
             device = device_str.split("=")
             device_name = device[0]
             ip_addr = device[1]
+            if ip_addr not in device_states:
+                device_states[ip_addr] = False
             response = system("ping -c 1 " + ip_addr)
             process_device_state(response == 0, ip_addr, device_name)
 
