@@ -10,7 +10,8 @@ MQTT_CLIENT_INSTANCE = None
 
 def notify_connection_changed(ip_addr: str, state: bool, name: str):
     logging.info("notify device connected/disconnected")
-    MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {ip_addr} status: {state}")
+    state_str = "connected" if state else "disconnected"
+    MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {name} ({ip_addr}) {state_str}!")
 
 def process_device_state(res: bool, ip_addr: str, name: str):
     if device_states[ip_addr] != res:
@@ -23,6 +24,7 @@ def ping_devices():
             device = device_str.split("=")
             device_name = device[0]
             ip_addr = device[1]
+            logging.info(f"processing {device_name}")
             if ip_addr not in device_states:
                 device_states[ip_addr] = False
             response = system("ping -c 1 " + ip_addr)
