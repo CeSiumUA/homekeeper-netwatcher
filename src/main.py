@@ -21,7 +21,8 @@ def process_device_state(res: bool, ip_addr: str, name: str):
         }
 
     if device_states[ip_addr] != res:
-        if device_states[ip_addr]["counter"] > 3:
+        counter_threshold = 5 if not res else 1
+        if device_states[ip_addr]["counter"] >= counter_threshold:
             notify_connection_changed(ip_addr, res, name)
             device_states[ip_addr]["state"] = res
             device_states[ip_addr]["counter"] = 0
