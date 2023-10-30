@@ -58,10 +58,15 @@ def start_mqtt():
     else:
         broker_port = int(broker_port)
 
+    broker_username = environ.get("MQTT_USERNAME")
+    broker_password = environ.get("MQTT_PASSWORD")
+
     client_id = "netwatcher-{}".format(random.randint(0, 1000))
 
     MQTT_CLIENT_INSTANCE = mqtt_client.Client(client_id=client_id)
     MQTT_CLIENT_INSTANCE.on_connect = on_mqtt_connect
+    if broker_username is not None:
+        MQTT_CLIENT_INSTANCE.username_pw_set(broker_username, broker_password)
     MQTT_CLIENT_INSTANCE.connect(broker_host, broker_port)
     MQTT_CLIENT_INSTANCE.loop_start()
 
