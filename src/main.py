@@ -4,14 +4,30 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from paho.mqtt import client as mqtt_client
 import topics
 import random
+import json
 
 device_states = {}
 MQTT_CLIENT_INSTANCE = None
 
+def get_publish_to_tg():
+    publish_to_tg = environ.get('PUBLISH_TO_TG')
+
+    if publish_to_tg is None:
+        return False
+    
+    return int(publish_to_tg) == 1
+
 def notify_connection_changed(ip_addr: str, state: bool, name: str):
     logging.info("notify device connected/disconnected")
     state_str = "connected" if state else "disconnected"
-    MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {name} ({ip_addr}) {state_str}!")
+
+    payload = {
+        "mobile_device": name,
+        "state": state
+    }
+    if get_publish_to_tg():
+        MQTT_CLIENT_INSTANCE.publish(topic=topics.SEND_MESSAGE, payload=f"device {name} ({ip_addr}) {state_str}!", qos=2)
+    MQTT_CLIENT_INSTANCE.publish(topic=topics.DEVICE_CONNECT_DISCONNECT, payload=json.dumps(payload), qos=2)
 
 def process_device_state(res: bool, ip_addr: str, name: str):
     if ip_addr not in device_states:
