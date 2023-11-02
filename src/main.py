@@ -5,9 +5,17 @@ from paho.mqtt import client as mqtt_client
 import topics
 import random
 import json
+from pymongo import MongoClient
 
 device_states = {}
 MQTT_CLIENT_INSTANCE = None
+
+MONGO_HOMEKEEPER_DB = "MONGO_HOMEKEEPER_DB"
+MONGO_MOBILE_DEVICES_COLL = "MONGO_MOBILE_DEVICES_COLL"
+
+MOBILE_DEVICE_NAME_FIELD = 'mobile_device_name'
+MOBILE_DEVICE_IP_ADDRESS = 'ip_address'
+MOBILE_DEVICE_IS_CONNECTED = 'is_connected'
 
 def get_publish_to_tg():
     publish_to_tg = environ.get('PUBLISH_TO_TG')
@@ -16,6 +24,13 @@ def get_publish_to_tg():
         return False
     
     return int(publish_to_tg) == 1
+
+def get_mongo_connection_string():
+    mongo_url = environ.get('MONGO_URL')
+    return mongo_url
+
+def get_db_and_coll_names():
+    return environ.get(MONGO_HOMEKEEPER_DB), environ.get(MONGO_MOBILE_DEVICES_COLL)
 
 def notify_connection_changed(ip_addr: str, state: bool, name: str):
     logging.info("notify device connected/disconnected")
@@ -48,11 +63,18 @@ def process_device_state(res: bool, ip_addr: str, name: str):
             device_states[ip_addr]["counter"] += 1
 
 def ping_devices():
-    with open("clients.list", "r") as fd:
-        for device_str in fd:
-            device = device_str.split("=")
-            device_name = device[0]
-            ip_addr = device[1]
+    mongo_url = get_mongo_connection_string()
+    if mongo_url is None:
+        logging.fatal("mongo url is empty")
+        return
+    
+    db, coll = get_db_and_coll_names()
+    
+    with MongoClient(mongo_url) as mongo_client:
+        collection = mongo_client[db][coll]
+        for device in collection.find({}):
+            device_name = device[MOBILE_DEVICE_NAME_FIELD]
+            ip_addr = device[MOBILE_DEVICE_IP_ADDRESS]
             logging.info(f"processing {device_name}")
             response = system("ping -c 1 " + ip_addr)
             process_device_state(response == 0, ip_addr, device_name)
